@@ -1,13 +1,36 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
 :root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
-  
-  --primary-color: #3b82f6;
-  --bg-color: #f9fafb;
+
+  /* Premium Palette */
+  --primary-color: #6366f1;
+  /* Indigo 500 */
+  --primary-light: #818cf8;
+  /* Indigo 400 */
+  --primary-dark: #4f46e5;
+  /* Indigo 600 */
+
+  --bg-color: #f8fafc;
+  /* Slate 50 */
+  --bg-dot: #cbd5e1;
+  /* Slate 300 */
+
   --node-bg: #ffffff;
-  --node-border: #e5e7eb;
-  --text-color: #374151;
+  --node-border: #e2e8f0;
+  /* Slate 200 */
+  --text-primary: #1e293b;
+  /* Slate 800 */
+  --text-secondary: #64748b;
+  /* Slate 500 */
+
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+
+  --highlight-glow: 0 0 0 3px rgba(99, 102, 241, 0.2);
 }
 
 body {
@@ -17,54 +40,86 @@ body {
   min-width: 320px;
   min-height: 100vh;
   background-color: var(--bg-color);
+  color: var(--text-primary);
 }
 
 /* Custom Node Styles */
 .custom-node {
-  padding: 10px 20px;
+  padding: 12px 24px;
   background-color: var(--node-bg);
-  border: 2px solid var(--node-border);
-  border-radius: 8px;
-  min-width: 150px;
+  border: 1px solid var(--node-border);
+  border-radius: 12px;
+  min-width: 160px;
   text-align: center;
   position: relative;
-  transition: border-color 0.3s ease;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: var(--shadow-md);
+
+  /* Glassmorphism hint (optional if we had a busy background, kept subtle here) */
+  /* backdrop-filter: blur(8px); */
+}
+
+.custom-node--highlighted {
+  border-color: var(--primary-color);
+  box-shadow: var(--highlight-glow);
+  background-color: #eef2ff;
+  /* Very light indigo */
 }
 
 .custom-node:hover {
-  border-color: var(--primary-color);
+  border-color: var(--primary-light);
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
 }
 
 .custom-node__label {
-  font-weight: 700;
-  color: var(--text-color);
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
 }
 
 .custom-node__toggle {
   position: absolute;
-  bottom: -15px;
+  bottom: -16px;
   left: 50%;
-  transform: translateX(-50%);
-  background-color: #fff;
-  border: 1px solid #d1d5db;
+  transform: translateX(-50%) scale(0.9);
+  background-color: var(--node-bg);
+  border: 1px solid var(--node-border);
   border-radius: 50%;
   padding: 4px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  box-shadow: var(--shadow-sm);
   z-index: 10;
-  transition: background-color 0.2s;
+  transition: all 0.2s ease;
+  color: var(--text-secondary);
 }
 
 .custom-node__toggle:hover {
-  background-color: #f3f4f6;
+  transform: translateX(-50%) scale(1.1);
+  background-color: #fff;
+  border-color: var(--primary-light);
+  color: var(--primary-color);
+  box-shadow: var(--shadow-md);
+}
+
+/* React Flow Handle Overrides */
+.react-flow__handle {
+  width: 8px;
+  height: 8px;
+  background-color: var(--text-secondary);
+  border: 2px solid #fff;
 }
 
 .custom-node__handle {
-  width: 8px !important;
-  height: 8px !important;
-  background: #9ca3af !important;
+  opacity: 0;
+  /* Hide handles visually but keep functionality if needed */
+  transition: opacity 0.2s;
+}
+
+.custom-node:hover .custom-node__handle {
+  opacity: 1;
 }

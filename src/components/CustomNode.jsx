@@ -4,7 +4,7 @@ import { ChevronDown } from 'lucide-react';
 
 const CustomNode = ({ data, id }) => {
     return (
-        <div className="custom-node">
+        <div className={`custom-node ${data.isHighlighted ? 'custom-node--highlighted' : ''}`}>
             <Handle type="target" position={Position.Top} className="custom-node__handle" />
 
             <div className="custom-node__label">{data.label}</div>

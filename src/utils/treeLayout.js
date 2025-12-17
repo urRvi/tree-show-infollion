@@ -49,6 +49,7 @@ export const calculateTreeLayout = (rootData) => {
             data: {
                 label: node.label,
                 isCollapsed: node.isCollapsed,
+                isHighlighted: node.isHighlighted,
                 hasChildren: node.children && node.children.length > 0
             },
             position: { x, y },
