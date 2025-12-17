@@ -2,13 +2,15 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import ReactFlow, {
     Background,
     Controls,
+    MiniMap,
     useNodesState,
     useEdgesState,
     useReactFlow,
-    ReactFlowProvider
+    ReactFlowProvider,
+    Panel
 } from 'reactflow';
 import 'reactflow/dist/style.css';
-import { Search } from 'lucide-react';
+import { Search, Layout, Maximize } from 'lucide-react';
 
 import { initialTreeData } from '../data/initialData';
 import { calculateTreeLayout } from '../utils/treeLayout';
@@ -21,7 +23,14 @@ const TreeVisualizerContent = () => {
     const [nodes, setNodes, onNodesChange] = useNodesState([]);
     const [edges, setEdges, onEdgesChange] = useEdgesState([]);
     const [searchQuery, setSearchQuery] = useState('');
+    const [direction, setDirection] = useState('TB'); // 'TB' or 'LR'
+    const [selectedNodeId, setSelectedNodeId] = useState(null);
     const { fitView } = useReactFlow();
+
+    // Handler for selection
+    const onSelect = useCallback((id) => {
+        setSelectedNodeId(prev => prev === id ? null : id); // Toggle selection
+    }, []);
 
     const onToggle = useCallback((id) => {
         const toggleRecursive = (node) => {
@@ -39,23 +48,9 @@ const TreeVisualizerContent = () => {
         setTreeData(prev => toggleRecursive(prev));
     }, []);
 
-    // Helper to find path to a node and expand parents
-    const expandPathToNode = (currentData, targetId, path = []) => {
-        if (currentData.id === targetId) return path;
-
-        if (currentData.children) {
-            for (const child of currentData.children) {
-                const result = expandPathToNode(child, targetId, [...path, currentData.id]);
-                if (result) return result;
-            }
-        }
-        return null;
-    };
-
     // Handle Search
     useEffect(() => {
         if (!searchQuery.trim()) {
-            // Reset highlights only
             setTreeData(prev => {
                 const resetHighlights = (node) => ({
                     ...node,
@@ -69,33 +64,7 @@ const TreeVisualizerContent = () => {
 
         const query = searchQuery.toLowerCase();
 
-        // 1. Find matches and paths to expand
-        let nodesToExpand = new Set();
-        let matchesFound = false;
-
-        const findMatches = (node) => {
-            const isMatch = node.label.toLowerCase().includes(query);
-            if (isMatch) matchesFound = true;
-
-            if (node.children) {
-                node.children.forEach(findMatches);
-            }
-
-            if (isMatch) {
-                // Find path from root to this node (inefficient but safe for small tree)
-                // Or we could have done it during traversal.
-                // Let's us the helper from topstate
-                // Note: we need to run this against the CURRENT treeData structure
-            }
-        };
-
-
-        // Better approach: Recursive update of treeData
-        // - Mark matched nodes as highlighted
-        // - If child matched, expand parent
         setTreeData(prevData => {
-            let foundAny = false;
-
             const checkMatchRecursive = (node) => {
                 const isMatch = node.label.toLowerCase().includes(query);
 
@@ -110,16 +79,13 @@ const TreeVisualizerContent = () => {
                     });
                 }
 
-                // Expand if children match
                 const shouldExpand = hasChildMatch;
-
-                if (isMatch || hasChildMatch) foundAny = true;
 
                 return {
                     node: {
                         ...node,
                         children: newChildren,
-                        isCollapsed: shouldExpand ? false : node.isCollapsed, // Auto-expand
+                        isCollapsed: shouldExpand ? false : node.isCollapsed,
                         isHighlighted: isMatch
                     },
                     hasMatch: isMatch || hasChildMatch
@@ -134,42 +100,54 @@ const TreeVisualizerContent = () => {
 
     // Layout Effect
     useEffect(() => {
-        const layout = calculateTreeLayout(treeData);
+        const layout = calculateTreeLayout(treeData, direction);
 
-        // Inject handlers and highlight state
         const nodesWithState = layout.nodes.map(node => ({
             ...node,
             data: {
                 ...node.data,
                 onToggle,
-                // Pass highlight state from treeData reference? 
-                // calculateTreeLayout needs to preserve isHighlighted or we pass it down?
-                // treeLayout currently rebuilds nodes. We need to pass isHighlighted in treeLayout logic or map it here.
-                // easier to update treeLayout to pass strict props.
-                // WAIT: calculateTreeLayout reads from 'treeData'. If we updated treeData with isHighlighted, it should be in the node object passed to traverse.
-                // Let's check treeLayout.js. It reads 'node.label', 'node.isCollapsed'. It needs to read 'node.isHighlighted' too.
-                isHighlighted: node.data ? node.data.isHighlighted : false // Checking how treeLayout constructs this. 
+                onSelect,
+                isHighlighted: node.data ? node.data.isHighlighted : false,
+                isSelected: node.id === selectedNodeId
             },
         }));
 
         setNodes(nodesWithState);
         setEdges(layout.edges);
-    }, [treeData, onToggle, setNodes, setEdges]);
+
+        // Optional: Auto fit view on layout change? 
+        // fitView({ duration: 800 }); // Can be jarring on minor expands
+    }, [treeData, onToggle, onSelect, selectedNodeId, setNodes, setEdges, direction]);
+
+    const toggleDirection = () => {
+        setDirection(prev => prev === 'TB' ? 'LR' : 'TB');
+        setTimeout(() => fitView({ duration: 800 }), 100);
+    };
+
+    // Handler for status change
+    const onStatusChange = (newStatus) => {
+        if (!selectedNodeId) return;
+
+        setTreeData(prev => {
+            const updateStatusRecursive = (node) => {
+                if (node.id === selectedNodeId) {
+                    return { ...node, status: newStatus };
+                }
+                if (node.children) {
+                    return {
+                        ...node,
+                        children: node.children.map(updateStatusRecursive),
+                    };
+                }
+                return node;
+            };
+            return updateStatusRecursive(prev);
+        });
+    };
 
     return (
         <div style={{ width: '100%', height: '100%', backgroundColor: '#f8fafc', position: 'relative' }}>
-
-            {/* Search Overlay */}
-            <div className="absolute top-4 left-4 z-50 bg-white p-2 rounded-lg shadow-md border border-slate-200 flex items-center gap-2 w-72">
-                <Search size={18} className="text-slate-400" />
-                <input
-                    type="text"
-                    placeholder="Search nodes..."
-                    className="flex-1 outline-none text-sm text-slate-700 placeholder:text-slate-400"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                />
-            </div>
 
             <ReactFlow
                 nodes={nodes}
@@ -186,13 +164,51 @@ const TreeVisualizerContent = () => {
                 proOptions={{ hideAttribution: true }}
             >
                 <Background color="#cbd5e1" gap={20} size={1} />
-                <Controls showInteractive={false} className="!bg-white !border-slate-200 !shadow-md" />
+
+                <Panel position="top-left" className="flex flex-col gap-2">
+                    <div className="bg-white p-2 rounded-lg shadow-md border border-slate-200 flex items-center gap-2 w-72">
+                        <Search size={18} className="text-slate-400" />
+                        <input
+                            type="text"
+                            placeholder="Search..."
+                            className="flex-1 outline-none text-sm text-slate-700 placeholder:text-slate-400"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                        />
+                    </div>
+                </Panel>
+
+                <Panel position="top-right" className="flex flex-col gap-2 items-end">
+                    <div className="flex gap-2">
+                        <button
+                            onClick={toggleDirection}
+                            className="p-2 bg-white rounded-lg shadow-md border border-slate-200 hover:bg-slate-50 text-slate-600 transition-colors"
+                            title="Toggle Orientation"
+                        >
+                            <Layout size={20} className={direction === 'LR' ? 'rotate-90' : ''} />
+                        </button>
+                        <button
+                            onClick={() => fitView({ duration: 800 })}
+                            className="p-2 bg-white rounded-lg shadow-md border border-slate-200 hover:bg-slate-50 text-slate-600 transition-colors"
+                            title="Fit View"
+                        >
+                            <Maximize size={20} />
+                        </button>
+                    </div>
+
+                </Panel>
+
+                <Controls showInteractive={false} className="!bg-white !border-slate-200 !shadow-md !m-4" />
+                <MiniMap
+                    nodeColor={n => n.data.isHighlighted ? '#6366f1' : '#e2e8f0'}
+                    maskColor="rgba(241, 245, 249, 0.7)"
+                    className="!bottom-4 !right-4 !m-0 !border !border-slate-200 !shadow-md !rounded-lg"
+                />
             </ReactFlow>
         </div>
     );
 };
 
-// Wrap in provider
 const TreeVisualizer = () => (
     <ReactFlowProvider>
         <TreeVisualizerContent />
